@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>日期选择</title>
+    <link rel="stylesheet" href="datepicker.css">
+    <style>
+        .datepickerContainer {
+            height: 100px;
+            width: 100%;
+            text-align: center;
+            /* background-color: antiquewhite; */
+        }
+    </style>
+</head>
+<body>
+    <div class="datepickerContainer">
+        <div class="date-picker date-picker-type" style="width: 200px;"></div>
+    </div>
+    <script src="datepicker.js"></script>
+    <script>
+        var datePicker = document.getElementsByClassName('date-picker')[0]
+        var body = document.body
+        new DatePicker(body, datePicker, true, 0, function (inputVal) {
+            console.log(inputVal)
+        })
+    </script>
+</body>
+</html>
