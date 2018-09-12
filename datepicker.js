@@ -1,15 +1,4 @@
 /**
- * 样式全部来自iview，代码参考组内datepicker和iview
- * 组内用到的日期选择插件依赖于jq，可以预见接下来技术可能过渡到vue，未来也许会有react
- * 那时候该插件就不适用了，如果在vue里面还引入jq，反而得不偿失
- * 所以我打算用js来重写。
- * 原来插件采用的es6 class语法，我将延续这中写法
- * 原来插件样式采用sass语法，不够通用，我还是继续采取普通css写法
- * 
- * PS：写日期选择插件的那位兄弟离职了，不然可以和他讨教下。但是，我还是偏向于iview的样式风格，原先的插件风格感觉体验不好
- *     那位兄弟估计是照着 elementui 样式风格去写的。
- *     我的布局风格更偏向于iview吧
- * 
  * @author lizz
  * 
  * @description 不知道什么时候开始写，因为懒。兼容性 >= IE10；（用到了classList）
@@ -21,6 +10,7 @@
  * 日期范围选择切换等功能 complete at 忘了
  * 日期范围点击选中日期并改变样式以及切换年月点击选中日期等功能 complete at 2018-09-11 PS:懒得一笔
  * 最终完成(样式优化等) complete at 不知道
+ * 
  */
 
  class DatePicker {
@@ -61,10 +51,11 @@
             nextYear: nextTime.getFullYear(),
             nextDate: nextTime.getDate(),
         }
-        this.inputVal = [] // 保存 input 输入框的值可能是单个日期也可能是两个日期(日期范围)，值为string类型
+        this.inputVal = [] // 保存 input 输入框的值可能是单个日期也可能是两个日期(日期范围)，值为string类型。最终赋值给日期输入框
+        this.cacheValue = '' // 缓存日期输入框的值，在日期范围模式下切换年月有用
         this.inputValNum = [] // 保存将 '2018-08-30'分割成数组后的Number类型值 [2018, 8, 30]
         this.weeks = ['日', '一', '二', '三', '四', '五', '六'],
-        this.selectedCount = 0, // 用于计算被选中日期数量，达到3设为0
+        this.selectedCount = 0 // 用于计算被选中日期数量，达到3设为0
         this.render(body, dom)
      };
 
@@ -80,6 +71,7 @@
       * @description 日期选择内部布局
       */
      changeDom (dom) {
+        this.dateInput()
         dom.innerHTML = this.dateInputDom + this.date
      };
 
@@ -90,7 +82,14 @@
         this.dateInputDom = `<div class="date-picker-rel date-picker-type">
                             <div class="date-input-wrapper date-picker-type">
                                 <i class="date-input-icon iconfont date-picker-type"></i>
-                                <input value="${this.inputVal[0] ? this.inputVal[0] : ''}" autocomplete="off" spellcheck="false" type="text" placeholder="请选择日期" class="date-picker-input date-picker-type" id="date-picker-input${this.i}">
+                                <input value="${!this.double ? 
+                                        this.inputVal.length === 1 ? 
+                                        this.inputVal[0] : '' 
+                                        : this.inputVal.length === 2 ? 
+                                            this.inputVal[0] + ' - ' + this.inputVal[1] : 
+                                                this.inputVal.length === 1 ? this.cacheValue : ''}" 
+                                        autocomplete="off" spellcheck="false" type="text" placeholder="请选择日期" 
+                                            class="date-picker-input date-picker-type" id="date-picker-input${this.i}">
                             </div>
                         </div>`
      };
@@ -167,23 +166,30 @@
                                 <div class="date-picker-cells date-picker-type">
                                     <div class="date-picker-cells-header date-picker-type">`
         for (let i = 0; i < this.weeks.length; i++) {
-            timePanelItem += `<span class="date-picker-type">${this.weeks[i]}</span>`
+            timePanelItem += `<span class="date-picker-type date-picker-week">${this.weeks[i]}</span>`
         }
         timePanelItem += `</div>`
         let allDaysArr = this.getAllDays(y, m)
         for (let i = 0; i < allDaysArr.length; i++) {
             // 上月的日期置灰
             if (i < allDaysArr.indexOf(1)) {
-                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-prev-month"><em class="date-picker-type">${allDaysArr[i]}</em></span>`
+                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-prev-month date-picker-disable"><em class="date-picker-type date-picker-disable">${allDaysArr[i]}</em></span>`
                 continue
             }
             // 下月的日期置灰，从这个月1号开始查找，避免找到上个月最后一天的下标
             if (i > allDaysArr.indexOf(this.getMonthDays(y, m), allDaysArr.indexOf(1))) {
-                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-next-month"><em class="date-picker-type">${allDaysArr[i]}</em></span>`
+                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-next-month date-picker-disable"><em class="date-picker-type date-picker-disable">${allDaysArr[i]}</em></span>`
                 continue
             }
             if (this.timeDate === allDaysArr[i] && this.timeMonth === m && this.timeYear === y) {
-                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-today"><em class="date-picker-type">${allDaysArr[i]}</em></span>`
+                timePanelItem += `<span class="date-picker-cells-cell date-picker-type date-picker-cells-cell-today
+                    ${(this.inputValNum[0] === y 
+                        && this.inputValNum[1] === m + 1 
+                        && this.inputValNum[2] === allDaysArr[i]) || 
+                        (this.inputValNum[3] === y 
+                            && this.inputValNum[4] === m + 1 
+                            && this.inputValNum[5] === allDaysArr[i])? 'date-picker-cells-cell-selected date-picker-cells-focused' : ''}
+                                "><em class="date-picker-type">${allDaysArr[i]}</em></span>`
                 continue
             }
             // 这里做个判断，当切换月份或者年份后再返回之前被选中的日期时，被选中的日期样式保留被选中状态
@@ -285,25 +291,16 @@
             if (e.target.classList.contains('date-picker-next-btn-arrow') || e.target.parentNode.classList.contains('date-picker-next-btn-arrow')) {
                 // 日期范围模式下，有两个面板，切换右侧面板下一月不影响左侧面板
                 if (e.target.classList.contains('date-picker-range-right') || e.target.parentNode.classList.contains('date-picker-range-right')) {
-                    me.state.nextTime.setMonth(me.state.nextMonth + 1)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 0, 2, 1)
                     me.dateInput()
                     me.datePanel(false)
                     me.changeDom(dom)
                     return
                 }
-                me.state.time.setMonth(me.state.month + 1)
-                me.state.year = me.state.time.getFullYear()
-                me.state.month = me.state.time.getMonth()
-                me.state.date = me.state.time.getDate()
+                me.resetState(false, 0, 0, 1)
                 // 日期范围模式下，有两个面板，切换左侧面板，至少保证右侧面板日期比左侧大一个月
                 if (me.state.month === me.state.nextMonth && me.state.year === me.state.nextYear) {
-                    me.state.nextTime.setMonth(me.state.nextMonth + 1)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 0, 2, 1)
                 }
                 me.dateInput()
                 me.datePanel(false)
@@ -314,26 +311,17 @@
             if (e.target.classList.contains('date-picker-prev-btn-arrow') || e.target.parentNode.classList.contains('date-picker-prev-btn-arrow')) {
                 // 日期范围模式下，有两个面板，切换右侧面板
                 if (e.target.classList.contains('date-picker-range-right') || e.target.parentNode.classList.contains('date-picker-range-right')) {
-                    me.state.nextTime.setMonth(me.state.nextMonth - 1)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 0, 2, -1)
                     // 日期范围模式下，有两个面板，切换右侧面板，至少保证右侧面板日期比左侧大一个月
                     if (me.state.month === me.state.nextMonth && me.state.year === me.state.nextYear) {
-                        me.state.time.setMonth(me.state.month - 1)
-                        me.state.year = me.state.time.getFullYear()
-                        me.state.month = me.state.time.getMonth()
-                        me.state.date = me.state.time.getDate()
+                        me.resetState(false, 0, 0, -1)
                     }
                     me.dateInput()
                     me.datePanel(false)
                     me.changeDom(dom)
                     return
                 }
-                me.state.time.setMonth(me.state.month - 1)
-                me.state.year = me.state.time.getFullYear()
-                me.state.month = me.state.time.getMonth()
-                me.state.date = me.state.time.getDate()
+                me.resetState(false, 0, 0, -1)
                 me.datePanel(false)
                 me.changeDom(dom)
                 return
@@ -342,24 +330,19 @@
             if (e.target.classList.contains('date-picker-next-btn-arrow-double') || e.target.parentNode.classList.contains('date-picker-next-btn-arrow-double')) {
                 // 日期范围模式下，有两个面板，切换右侧面板，不影响左侧面板日期
                 if (e.target.classList.contains('date-picker-range-right') || e.target.parentNode.classList.contains('date-picker-range-right')) {
-                    me.state.nextTime.setFullYear(me.state.nextYear + 1)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 1, 3, 1)
                     me.datePanel(false)
                     me.changeDom(dom)
                     return
                 }
-                me.state.time.setFullYear(me.state.year + 1)
-                me.state.year = me.state.time.getFullYear()
-                me.state.month = me.state.time.getMonth()
-                me.state.date = me.state.time.getDate()
+                me.resetState(false, 1, 1, 1)
                 // 日期范围模式下，有两个面板，切换左侧面板日期，至少保证右侧面板日期与左侧面板日期年份相同
                 if (me.state.year > me.state.nextYear) {
-                    me.state.nextTime.setFullYear(me.state.year)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 1, 1, 0)
+                }
+                // 当左侧面板切换到上一年，然后把月份切换到比右侧面板月份大，再将左侧面板年份切换回来发现bug
+                if (me.state.nextYear === me.state.year && me.state.nextMonth <= me.state.month) {
+                    me.resetState(false, 0, 2, -1)
                 }
                 me.datePanel(false)
                 me.changeDom(dom)
@@ -372,25 +355,20 @@
                 }
                 // 日期范围模式下，有两个面板，切换右侧面板
                 if (e.target.classList.contains('date-picker-range-right') || e.target.parentNode.classList.contains('date-picker-range-right')) {
-                    me.state.nextTime.setFullYear(me.state.nextYear - 1)
-                    me.state.nextYear = me.state.nextTime.getFullYear()
-                    me.state.nextMonth = me.state.nextTime.getMonth()
-                    me.state.nextDate = me.state.nextTime.getDate()
+                    me.resetState(true, 1, 3, -1)
                     // 至少保证右侧面板日期与左侧面板日期年份相同
                     if (me.state.nextYear < me.state.year) {
-                        me.state.time.setFullYear(me.state.nextYear)
-                        me.state.year = me.state.time.getFullYear()
-                        me.state.month = me.state.time.getMonth()
-                        me.state.date = me.state.time.getDate()
+                        me.resetState(false, 1, 3, 0)
+                    }
+                    // 当右侧面板切换到下一年，然后把月份切换到比左侧面板月份小，再将右侧面板年份切换回来发现bug
+                    if (me.state.nextYear === me.state.year && me.state.nextMonth <= me.state.month) {
+                        me.resetState(true, 0, 0, 1)
                     }
                     me.datePanel(false)
                     me.changeDom(dom)
                     return
                 }
-                me.state.time.setFullYear(me.state.year - 1)
-                me.state.year = me.state.time.getFullYear()
-                me.state.month = me.state.time.getMonth()
-                me.state.date = me.state.time.getDate()
+                me.resetState(false, 1, 1, -1)
                 me.datePanel(false)
                 me.changeDom(dom)
                 return
@@ -422,7 +400,7 @@
             }
             // 选中日期；e.target 是 span 情况
             if (e.target.nodeName === 'SPAN' && !(e.target.classList.contains('date-picker-cells-cell-prev-month')
-                || e.target.classList.contains('date-picker-cells-cell-next-month')) ) {
+                || e.target.classList.contains('date-picker-cells-cell-next-month') || e.target.classList.contains('date-picker-week')) ) {
                 if (!me.double) {
                     // 针对选择单个日期修改选中样式
                     for (let i = 0; i < me.siblings(e.target).length; i++) {
@@ -483,7 +461,17 @@
       * @description 根据被点击的em或span去找当前日期的年，月，选择日期范围时用到
       */
      findYM (e) {
-        let ymArr = e.path[4].children[0].innerText.split('')
+        let ymArr
+        if (e.target.nodeName === 'SPAN') {
+            ymArr = e.path[3].children[0].innerText.split('')
+            if (ymArr.length === 8) {
+                return +e.target.children[0].innerHTML < 10 ? `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-0${ymArr[6]}-0${e.target.children[0].innerHTML}` : `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-0${ymArr[6]}-${e.target.children[0].innerHTML}`
+            }
+            if (ymArr.length === 9) {
+                return +e.target.children[0].innerHTML < 10 ? `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-${ymArr[6]}${ymArr[7]}-0${e.target.children[0].innerHTML}` : `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-${ymArr[6]}${ymArr[7]}-${e.target.children[0].innerHTML}`
+            }
+        }
+        ymArr = e.path[4].children[0].innerText.split('')
         if (ymArr.length === 8) {
             return +e.target.innerHTML < 10 ? `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-0${ymArr[6]}-0${e.target.innerHTML}` : `${ymArr[0]}${ymArr[1]}${ymArr[2]}${ymArr[3]}-0${ymArr[6]}-${e.target.innerHTML}`
         }
@@ -533,6 +521,50 @@
         } 
      };
 
+    /**
+      * @param {*} isNext boolean类型，判断修改 this.state.nextTime 还是 this.state.time
+      * @param {*} ym 0和1；0代表 setMonth，1代表 setFullYear。 Number
+      * @param {*} refer 0,1,2,3；
+      *                  0 代表以 this.state.month 为参数进行修改 ，
+      *                  1 代表以 this.state.year 为参数进行修改 ，
+      *                  2 代表以 this.state.nextMonth 为参数进行修改 。
+      *                  3 代表以 this.state.nextYear 为参数进行修改 。
+      *                  Number
+      * @param {*} pn -1, 0, 1；
+      *               0代表当前 this.state.month/year 或 this.state.nextYear/nextMonth；
+      *               -1代表上一个月/上一年；
+      *               1代表下个月/明年。
+      *               Number
+      * @description 把重复修改this.state代码抽出来
+      */
+     resetState (isNext, ym, refer, pn) {
+        if (isNext) {
+            if (ym === 0) {
+                refer === 0 ? this.state.nextTime.setMonth(this.state.month + pn) : ''
+                refer === 2 ? this.state.nextTime.setMonth(this.state.nextMonth + pn) : ''
+            }
+            if (ym === 1) {
+                refer === 1 ? this.state.nextTime.setFullYear(this.state.year + pn) : ''
+                refer === 3 ? this.state.nextTime.setFullYear(this.state.nextYear + pn) : ''
+            }
+            this.state.nextYear = this.state.nextTime.getFullYear()
+            this.state.nextMonth = this.state.nextTime.getMonth()
+            this.state.nextDate = this.state.nextTime.getDate()
+            return
+        }
+        if (ym === 0) {
+            refer === 0 ? this.state.time.setMonth(this.state.month + pn) : ''
+            refer === 2 ? this.state.time.setMonth(this.state.nextMonth + pn) : ''
+        }
+        if (ym === 1) {
+            refer === 1 ? this.state.time.setFullYear(this.state.year + pn) : ''
+            refer === 3 ? this.state.time.setFullYear(this.state.nextYear + pn) : ''
+        }
+        this.state.year = this.state.time.getFullYear()
+        this.state.month = this.state.time.getMonth()
+        this.state.date = this.state.time.getDate()
+     };
+
      /**
       * 
       * @param {*} e 节点
@@ -559,9 +591,16 @@
                 return
             }
             // 确保正确的日期范围，保证不管怎么点击，较大日期排在后面
-            this.inputVal.length === 1 ? this.compare(this.inputVal[0], this.findYM(e)) ? this.inputVal.unshift(this.findYM(e)) : this.inputVal.push(this.findYM(e)) : ''
+            this.inputVal.length === 1 ? 
+                this.compare(this.inputVal[0], this.findYM(e)) ? 
+                    this.inputVal.unshift(this.findYM(e)) : this.inputVal.push(this.findYM(e)) : ''
+            if (new Date(this.inputVal[0]).getTime() === new Date(this.inputVal[1]).getTime()) {
+                this.inputVal.length = 1
+                return
+            }
             this.splitInputVal(`${this.inputVal[0]}-${this.inputVal[1]}`)
             datePickerInput.value = `${this.inputVal[0]} - ${this.inputVal[1]}`
+            this.cacheValue = datePickerInput.value
         }
         this.callback(this.inputVal)
      }

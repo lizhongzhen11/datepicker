@@ -1,3 +1,11 @@
+body {
+    -moz-user-select: none; /*火狐*/
+    -webkit-user-select: none; /*webkit浏览器*/
+    -ms-user-select: none; /*IE10*/
+    -khtml-user-select: none; /*早期浏览器*/
+    user-select: none;
+}
+
 *, :after, :before {
     box-sizing: border-box;
 }
@@ -287,4 +295,13 @@ span.date-picker-cells-cell {
 
 .date-picker-with-range .date-picker-panel-content {
     float: left;
+}
+
+/**
+ * 禁用日期样式
+ */
+.date-picker-disable {
+    cursor: default!important;
+    background-color: #fff!important;
+    color: #c5c8ce;
 }
